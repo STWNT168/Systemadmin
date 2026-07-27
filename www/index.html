@@ -1,1 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPS LOG — Work Order Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14171c;
+    --panel: #1b1f27;
+    --panel-2: #20242d;
+    --border: #2b3038;
+    --border-soft: #23272f;
+    --text: #e9e7e0;
+    --muted: #8b93a1;
+    --muted-2: #5c6270;
+    --amber: #d9932e;
 
+    --c-call: #5b8fd9;
+    --c-repair: #d9622e;
+    --c-draft: #4fa88a;
+    --c-maint: #b5883f;
+    --c-meet: #9b6bd9;
+    --c-deploy: #5bbf6b;
+    --c-monitor: #4fb8c4;
+    --c-other: #7d8492;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--bg), var(--bg));
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding: 28px 16px 60px;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  .wrap{ max-width: 760px; margin: 0 auto; }
+
+  /* HEADER */
+  header{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header .title-block .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  header h1{
+    margin:0; font-size: 26px; letter-spacing: 0.5px; font-weight: 700;
+  }
+  header .clock{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.5;
+  }
+  header .clock .date{ color: var(--text); font-weight: 600; }
+
+  /* STATS STRIP */
+  .stats{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .stat{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .stat .num{ font-family:'JetBrains Mono',monospace; font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat .lbl{ font-size: 11px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+
+  .view-tabs{
+    display:flex; gap: 4px; margin-bottom: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
+    width: fit-content;
+  }
+  .view-tabs button{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 7px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .view-tabs button.active{ background: var(--panel-2); color: var(--amber); }
+
+  /* CATEGORY BREAKDOWN */
+  .breakdown{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 22px;
+  }
+  .breakdown .bd-title{
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .bd-row{ display:flex; align-items:center; gap: 10px; margin-bottom: 7px; font-size: 12.5px; }
+  .bd-row:last-child{ margin-bottom: 0; }
+  .bd-cat{ width: 92px; flex-shrink:0; color: var(--text); }
+  .bd-bar-track{ flex:1; height: 8px; background: var(--border-soft); border-radius: 4px; overflow:hidden; }
+  .bd-bar-fill{ height:100%; border-radius:4px; }
+  .bd-val{ font-family:'JetBrains Mono',monospace; width: 44px; text-align:right; color: var(--muted); flex-shrink:0; }
+  .bd-empty{ color: var(--muted-2); font-size: 12.5px; }
+
+  /* LOG FORM PANEL */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 26px;
+  }
+  .mode-toggle{
+    display:flex; gap: 6px; margin-bottom: 16px;
+  }
+  .mode-toggle button{
+    flex:1;
+    font-family:'JetBrains Mono',monospace;
+    font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .mode-toggle button.active{
+    border-color: var(--amber);
+    color: var(--amber);
+    background: rgba(217,147,46,0.08);
+  }
+
+  .cat-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 480px){ .cat-grid{ grid-template-columns: repeat(2, 1fr); } }
+  .cat-chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 11px;
+    padding: 8px 4px;
+    text-align:center;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    cursor:pointer;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    transition: border-color 0.12s;
+  }
+  .cat-chip.selected{ color: var(--text); border-width: 1px; }
+
+  label.f-label{
+    display:block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px;
+  }
+  input[type=text], textarea, input[type=number]{
+    width:100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+  }
+  textarea{ resize: vertical; min-height: 54px; }
+  input:focus, textarea:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
+
+  .row2{ display:flex; gap: 10px; }
+  .row2 > div{ flex:1; }
+
+  .log-btn{
+    margin-top: 16px;
+    width: 100%;
+    background: var(--amber);
+    color: #1a1408;
+    border: none;
+    font-family:'JetBrains Mono',monospace;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-size: 13px;
+    padding: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .log-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+
+  /* TIMER MODE */
+  .timer-display{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 42px;
+    font-weight: 700;
+    text-align:center;
+    color: var(--amber);
+    padding: 14px 0 6px;
+    letter-spacing: 2px;
+  }
+  .timer-status{
+    text-align:center; font-size: 11px; color: var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom: 10px;
+  }
+  .timer-btn{
+    width:100%; padding: 12px;
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700; letter-spacing:1px; text-transform:uppercase; font-size:13px;
+    border:none; border-radius:5px; cursor:pointer; margin-top: 6px;
+  }
+  .timer-btn.start{ background: var(--c-deploy); color:#0b1a0d; }
+  .timer-btn.stop{ background: var(--c-repair); color:#1f0e05; }
+
+  /* LOG LIST */
+  .day-group{ margin-bottom: 22px; }
+  .day-header{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 6px; margin-bottom: 10px;
+  }
+  .day-header span{ color: var(--text); }
+
+  .entry{
+    display:flex;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c-other);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .entry .wo{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 11px;
+    color: var(--muted-2);
+    width: 64px;
+    flex-shrink:0;
+    padding-top: 2px;
+  }
+  .entry .body{ flex:1; min-width:0; }
+  .entry .top-row{ display:flex; align-items:center; gap: 8px; flex-wrap:wrap; margin-bottom: 4px; }
+  .entry .cat-tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+  .entry .time{ font-family:'JetBrains Mono',monospace; font-size: 11.5px; color: var(--muted); }
+  .entry .dur{ font-family:'JetBrains Mono',monospace; font-size: 11.5px; color: var(--amber); margin-left: auto; }
+  .entry .desc{ font-size: 13.5px; color: var(--text); line-height: 1.4; word-wrap: break-word; }
+  .entry .del{
+    position:absolute; top: 8px; right: 8px;
+    background:none; border:none; color: var(--muted-2);
+    cursor:pointer; font-size: 14px; padding: 2px 6px;
+  }
+  .entry .del:hover{ color: var(--c-repair); }
+
+  .empty-state{
+    text-align:center;
+    padding: 40px 20px;
+    color: var(--muted-2);
+    font-size: 13px;
+  }
+  .empty-state .big{
+    font-family:'JetBrains Mono',monospace;
+    font-size: 13px; letter-spacing: 1px; text-transform:uppercase; color: var(--muted); margin-bottom:6px;
+  }
+
+  footer{
+    text-align:center; margin-top: 30px; font-size: 11px; color: var(--muted-2);
+    font-family:'JetBrains Mono',monospace;
+  }
+  footer button{
+    background:none; border: 1px solid var(--border); color: var(--muted);
+    font-family:'JetBrains Mono',monospace; font-size: 11px; padding: 6px 12px; border-radius: 4px; cursor:pointer;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">// system administration</div>
+      <h1>OPS LOG</h1>
+    </div>
+    <div class="clock">
+      <div class="date" id="clockDate">—</div>
+      <div id="clockTime">—</div>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="statHours">0.0h</div><div class="lbl">Logged</div></div>
+    <div class="stat"><div class="num" id="statCount">0</div><div class="lbl">Entries</div></div>
+    <div class="stat"><div class="num" id="statTop">—</div><div class="lbl">Top Category</div></div>
+  </div>
+
+  <div class="view-tabs" id="viewTabs">
+    <button data-view="today" class="active">Today</button>
+    <button data-view="week">This Week</button>
+    <button data-view="all">All Time</button>
+  </div>
+
+  <div class="breakdown">
+    <div class="bd-title">Breakdown</div>
+    <div id="breakdownBody"><div class="bd-empty">No entries logged yet.</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="mode-toggle">
+      <button id="modeManual" class="active">Manual Entry</button>
+      <button id="modeTimer">Live Timer</button>
+    </div>
+
+    <div class="cat-grid" id="catGrid"></div>
+
+    <!-- Manual mode -->
+    <div id="manualBlock">
+      <label class="f-label">What did you do</label>
+      <textarea id="descInput" placeholder="e.g. Restarted mail relay service after alert, verified queue cleared"></textarea>
+      <div class="row2">
+        <div>
+          <label class="f-label">Duration (minutes)</label>
+          <input type="number" id="durInput" min="1" placeholder="30">
+        </div>
+        <div>
+          <label class="f-label">Time started</label>
+          <input type="text" id="timeInput" placeholder="14:30">
+        </div>
+      </div>
+      <button class="log-btn" id="logManualBtn">Log Work Order</button>
+    </div>
+
+    <!-- Timer mode -->
+    <div id="timerBlock" style="display:none;">
+      <label class="f-label">What are you working on</label>
+      <textarea id="descInputTimer" placeholder="e.g. On call with vendor re: firewall rule conflict"></textarea>
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <div class="timer-status" id="timerStatus">Not running</div>
+      <button class="timer-btn start" id="timerBtn">Start Timer</button>
+    </div>
+  </div>
+
+  <div id="logListContainer"></div>
+
+  <footer>
+    <div id="footerNote">Data stored locally to your account.</div>
+    <button id="clearBtn">Clear all entries</button>
+  </footer>
+
+</div>
+
+<script>
+const CATEGORIES = [
+  { id:'call',    label:'Call',        color:'var(--c-call)' },
+  { id:'repair',  label:'Repair',      color:'var(--c-repair)' },
+  { id:'draft',   label:'Drafting',    color:'var(--c-draft)' },
+  { id:'maint',   label:'Maintenance', color:'var(--c-maint)' },
+  { id:'meet',    label:'Meeting',     color:'var(--c-meet)' },
+  { id:'deploy',  label:'Deployment',  color:'var(--c-deploy)' },
+  { id:'monitor', label:'Monitoring',  color:'var(--c-monitor)' },
+  { id:'other',   label:'Other',       color:'var(--c-other)' },
+];
+const catMap = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+let entries = [];
+let selectedCat = 'call';
+let currentView = 'today';
+let timerRunning = false;
+let timerStart = null;
+let timerInterval = null;
+let storageOk = true;
+
+const STORAGE_KEY = 'ops-log-entries';
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function fmtClock(d){
+  return { date: d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}), time: d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) };
+}
+function tickClock(){
+  const now = new Date();
+  const f = fmtClock(now);
+  document.getElementById('clockDate').textContent = f.date;
+  document.getElementById('clockTime').textContent = f.time;
+}
+setInterval(tickClock, 1000*30);
+tickClock();
+
+function todayStr(d = new Date()){
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+
+async function loadEntries(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    entries = [];
+  }
+  render();
+}
+
+async function saveEntries(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }catch(e){
+    storageOk = false;
+    document.getElementById('footerNote').textContent = 'Storage unavailable — entries may not persist.';
+  }
+}
+
+function nextWoNumber(){
+  const n = entries.length + 1;
+  return 'WO-' + String(n).padStart(4,'0');
+}
+
+function renderCatGrid(){
+  const grid = document.getElementById('catGrid');
+  grid.innerHTML = '';
+  CATEGORIES.forEach(c => {
+    const btn = document.createElement('div');
+    btn.className = 'cat-chip' + (c.id === selectedCat ? ' selected' : '');
+    btn.textContent = c.label;
+    btn.style.borderColor = c.id === selectedCat ? c.color : '';
+    btn.style.color = c.id === selectedCat ? c.color : '';
+    btn.addEventListener('click', () => { selectedCat = c.id; renderCatGrid(); });
+    grid.appendChild(btn);
+  });
+}
+
+function filteredEntries(){
+  const now = new Date();
+  if(currentView === 'today'){
+    const t = todayStr(now);
+    return entries.filter(e => e.date === t);
+  }
+  if(currentView === 'week'){
+    const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate()-7);
+    return entries.filter(e => new Date(e.date + 'T00:00:00') >= weekAgo);
+  }
+  return entries.slice();
+}
+
+function renderStats(){
+  const list = filteredEntries();
+  const totalMin = list.reduce((s,e) => s + e.duration, 0);
+  document.getElementById('statHours').textContent = (totalMin/60).toFixed(1) + 'h';
+  document.getElementById('statCount').textContent = list.length;
+
+  const byCat = {};
+  list.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + e.duration; });
+  const top = Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('statTop').textContent = top ? catMap[top[0]].label : '—';
+}
+
+function renderBreakdown(){
+  const list = filteredEntries();
+  const body = document.getElementById('breakdownBody');
+  if(list.length === 0){
+    body.innerHTML = '<div class="bd-empty">No entries logged yet.</div>';
+    return;
+  }
+  const byCat = {};
+  list.forEach(e => { byCat[e.category] = (byCat[e.category]||0) + e.duration; });
+  const maxVal = Math.max(...Object.values(byCat));
+  const rows = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cid,mins]) => {
+    const c = catMap[cid];
+    const pct = maxVal ? (mins/maxVal*100) : 0;
+    return `<div class="bd-row">
+      <div class="bd-cat">${c.label}</div>
+      <div class="bd-bar-track"><div class="bd-bar-fill" style="width:${pct}%; background:${c.color};"></div></div>
+      <div class="bd-val">${(mins/60).toFixed(1)}h</div>
+    </div>`;
+  }).join('');
+  body.innerHTML = rows;
+}
+
+function renderLogList(){
+  const container = document.getElementById('logListContainer');
+  const list = filteredEntries().slice().sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+  if(list.length === 0){
+    container.innerHTML = '<div class="empty-state"><div class="big">Log book empty</div>Log your first work order above.</div>';
+    return;
+  }
+  const groups = {};
+  list.forEach(e => { (groups[e.date] = groups[e.date] || []).push(e); });
+
+  const todayS = todayStr();
+  const yestS = todayStr(new Date(Date.now() - 86400000));
+
+  container.innerHTML = Object.keys(groups).sort().reverse().map(date => {
+    let label = date;
+    if(date === todayS) label = 'Today — ' + date;
+    else if(date === yestS) label = 'Yesterday — ' + date;
+    const entriesHtml = groups[date].map(e => {
+      const c = catMap[e.category];
+      return `<div class="entry" style="border-left-color:${c.color};" data-id="${e.id}">
+        <div class="wo">${e.wo}</div>
+        <div class="body">
+          <div class="top-row">
+            <span class="cat-tag" style="background:${c.color}22; color:${c.color};">${c.label}</span>
+            <span class="time">${e.time}</span>
+            <span class="dur">${e.duration}m</span>
+          </div>
+          <div class="desc">${escapeHtml(e.description)}</div>
+        </div>
+        <button class="del" data-id="${e.id}" title="Delete">✕</button>
+      </div>`;
+    }).join('');
+    return `<div class="day-group"><div class="day-header"><span>${label}</span></div>${entriesHtml}</div>`;
+  }).join('');
+
+  container.querySelectorAll('.del').forEach(btn => {
+    btn.addEventListener('click', async (ev) => {
+      const id = ev.target.getAttribute('data-id');
+      entries = entries.filter(e => e.id !== id);
+      await saveEntries();
+      render();
+    });
+  });
+}
+
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function render(){
+  renderCatGrid();
+  renderStats();
+  renderBreakdown();
+  renderLogList();
+}
+
+// View tabs
+document.getElementById('viewTabs').addEventListener('click', (e) => {
+  if(e.target.tagName !== 'BUTTON') return;
+  currentView = e.target.getAttribute('data-view');
+  document.querySelectorAll('#viewTabs button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  render();
+});
+
+// Mode toggle
+const manualBlock = document.getElementById('manualBlock');
+const timerBlock = document.getElementById('timerBlock');
+document.getElementById('modeManual').addEventListener('click', () => {
+  document.getElementById('modeManual').classList.add('active');
+  document.getElementById('modeTimer').classList.remove('active');
+  manualBlock.style.display = 'block';
+  timerBlock.style.display = 'none';
+});
+document.getElementById('modeTimer').addEventListener('click', () => {
+  document.getElementById('modeTimer').classList.add('active');
+  document.getElementById('modeManual').classList.remove('active');
+  timerBlock.style.display = 'block';
+  manualBlock.style.display = 'none';
+});
+
+// Manual log
+document.getElementById('logManualBtn').addEventListener('click', async () => {
+  const desc = document.getElementById('descInput').value.trim();
+  const dur = parseInt(document.getElementById('durInput').value, 10);
+  const timeVal = document.getElementById('timeInput').value.trim();
+  if(!desc){ alert('Describe the work.'); return; }
+  if(!dur || dur <= 0){ alert('Enter a duration in minutes.'); return; }
+
+  const now = new Date();
+  const time = timeVal || now.toTimeString().slice(0,5);
+
+  entries.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    wo: nextWoNumber(),
+    category: selectedCat,
+    description: desc,
+    duration: dur,
+    date: todayStr(now),
+    time: time
+  });
+  await saveEntries();
+  document.getElementById('descInput').value = '';
+  document.getElementById('durInput').value = '';
+  document.getElementById('timeInput').value = '';
+  render();
+});
+
+// Timer mode
+function updateTimerDisplay(){
+  if(!timerRunning) return;
+  const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+  const h = Math.floor(elapsed/3600), m = Math.floor((elapsed%3600)/60), s = elapsed%60;
+  document.getElementById('timerDisplay').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+document.getElementById('timerBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('timerBtn');
+  const status = document.getElementById('timerStatus');
+  if(!timerRunning){
+    const desc = document.getElementById('descInputTimer').value.trim();
+    if(!desc){ alert('Describe what you\'re working on before starting the timer.'); return; }
+    timerRunning = true;
+    timerStart = Date.now();
+    btn.textContent = 'Stop Timer';
+    btn.classList.remove('start'); btn.classList.add('stop');
+    status.textContent = 'Running';
+    timerInterval = setInterval(updateTimerDisplay, 1000);
+  } else {
+    timerRunning = false;
+    clearInterval(timerInterval);
+    const elapsedMin = Math.max(1, Math.round((Date.now() - timerStart) / 60000));
+    const desc = document.getElementById('descInputTimer').value.trim();
+    const now = new Date();
+    entries.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      wo: nextWoNumber(),
+      category: selectedCat,
+      description: desc,
+      duration: elapsedMin,
+      date: todayStr(now),
+      time: new Date(timerStart).toTimeString().slice(0,5)
+    });
+    await saveEntries();
+    document.getElementById('descInputTimer').value = '';
+    document.getElementById('timerDisplay').textContent = '00:00:00';
+    status.textContent = 'Not running';
+    btn.textContent = 'Start Timer';
+    btn.classList.remove('stop'); btn.classList.add('start');
+    render();
+  }
+});
+
+// Clear all
+document.getElementById('clearBtn').addEventListener('click', async () => {
+  if(!confirm('Delete all logged work orders? This cannot be undone.')) return;
+  entries = [];
+  await saveEntries();
+  render();
+});
+
+loadEntries();
+</script>
+</body>
+</html>
