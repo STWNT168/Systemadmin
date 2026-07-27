@@ -1,0 +1,11 @@
+{
+  "name": "ops-log",
+  "displayName": "Ops Log",
+  "version": "1.0.0",
+  "description": "System admin work order tracker",
+  "cordova": {
+    "platforms": [
+      "android"
+    ]
+  }
+}
